@@ -21,7 +21,7 @@ NSString *str = [[[NSString alloc] initWithString:@"hello"] autorelease];
 ## ARC和MRC下的autorelease
 
 #### ARC
-`ARC`是苹果引入的一种自动内存管理机制，会根据引用计数自动监视对象的生存周期，实现方式是在编译时期自动在已有代码中插入合适的内存管理代码以及在 `Runtime`做一些优化。
+`ARC`是苹果引入的一种自动内存管理机制，会根据引用计数自动监视对象的生存周期，实现方式是在编译时期自动在已有代码中插入合适的内存管理代码(release)以及在 `Runtime`做一些优化。
 
 在`ARC`的情况下，编译器会在`RunLoop`休眠前执行释放的，而它能够释放的原因就是系统在每个`runloop`迭代中都加入了自动释放池`Push`和`Pop`
 
@@ -60,6 +60,19 @@ for (int i = 0; i < 100000000; i++)
 当我们需要创建和销毁大量的对象时，使用手动创建的 `autoreleasepool` 可以有效的避免内存峰值的出现。因为如果不手动创建的话，外层系统创建的 `pool` 会在整个 `runloop circle` 结束之后才进行 `drain`，手动创建的话，会在 `block` 结束之后就进行 `drain` 操作。
 如果不使用 `autoreleasepool` ，需要在循环结束之后释放 100000000 个字符串，如果 使用的话，则会在每次循环结束的时候都进行 `release` 操作。
 
+## main.m 中 Autorelease Pool
+通常 iOS 程序的 main.m 文件中有类似这样的语句：
+```objc
+int main(int argc, char * argv[]) {
+    @autoreleasepool {
+        return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+    }
+}
+```
+ `UIApplicationMain` 函数是整个 `app` 的入口，用来创建 `application` 对象（单例）和 `application delegate`。尽管这个函数有返回值，但是实际上却永远不会返回，当按下 `Home` 键时，由于主线程`Runloop`的存在，`app` 只是被切换到了后台状态。<br>
+ 但由于这个函数永远不会返回，只有在系统 kill 掉整个 app 时，系统会把应用占用的内存全部释放出来。<br>
+ `UIApplication` 自己会创建 `main run loop`，在 `Cocoa` 的 `runloop` 中实际上也是自动包含 `autorelease pool` 的，因此 `main.m` 当中的 `pool` 可以认为是没有必要的。<br>
+ 直接删掉是没问题的，但由于苹果不建议修改`main.m`，所以我们一般不会将它直接删掉
 
 > 本文首次发布于 [孙忠良 Blog](https://sunzhongliangde.github.io), 作者 [@sunzhongliang] ,
 转载请保留原文链接.
